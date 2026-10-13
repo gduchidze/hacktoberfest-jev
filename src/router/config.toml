@@ -1,0 +1,12 @@
+# Router configuration. Any key can be overridden by an env var: ROUTER_<KEY>.
+
+log_level = "INFO"
+
+# Thresholds
+human_threshold = 0.8  # P(wants_human) above this -> hand off
+abstain_below = 0.3    # intent confidence below this -> ask a clarifying question
+frontier_from = 1.0    # complexity score at or above this -> frontier model
+
+# Models
+small_model = "small-llm"
+frontier_model = "frontier-llm"

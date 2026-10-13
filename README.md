@@ -7,9 +7,12 @@ A small Python playground for building type-safe AI apps with LangChain, Pydanti
 You need Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv sync
-source .venv/bin/activate
+uv venv venv --python 3.12
+source venv/bin/activate
+uv sync --active
 ```
+
+Use `--active` so uv installs into `venv/` instead of creating `.venv`.
 
 ## What's inside
 
@@ -23,9 +26,9 @@ All versions are pinned in `pyproject.toml`.
 ## Checks
 
 ```bash
-uv run ruff check .
-uv run mypy .
-uv run pytest
+ruff check .
+mypy .
+pytest
 ```
 
 ## License
