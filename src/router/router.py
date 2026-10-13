@@ -1,5 +1,6 @@
 """The router: plain Python decides, an LLM runs only inside the chosen agent."""
 
+import logging
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -9,6 +10,8 @@ from .handlers import clarify, handoff
 from .intents import Agent, Intent
 from .questions import ask
 from .settings import Settings, settings
+
+logger = logging.getLogger(__name__)
 
 
 class Router(BaseModel):
@@ -27,16 +30,40 @@ class Router(BaseModel):
 
     def route(self, client: TypeSafeClient, msg: str) -> str:
         """Route ``msg`` to a human, a clarifying question, or an intent agent."""
+        cfg = self.settings
+        logger.info("1. ask   | one system_one call, 3 questions | msg=%r", msg)
         response = ask(client, msg)
 
-        if response.nouls["wants_human"].noul > self.settings.human_threshold:
+        wants_human = response.nouls["wants_human"].noul
+        logger.info(
+            "2. human | P(wants_human)=%.2f vs threshold %.2f -> %s",
+            wants_human,
+            cfg.human_threshold,
+            "HAND OFF" if wants_human > cfg.human_threshold else "continue",
+        )
+        if wants_human > cfg.human_threshold:
             return handoff(msg)
 
         intent = response.choices["intent"]
-        if intent.confidence < self.settings.abstain_below:
+        logger.info(
+            "3. intent| %s (confidence=%.2f) vs abstain_below %.2f -> %s",
+            intent.choice,
+            intent.confidence,
+            cfg.abstain_below,
+            "CLARIFY" if intent.confidence < cfg.abstain_below else "continue",
+        )
+        if intent.confidence < cfg.abstain_below:
             return clarify(msg)
 
         complexity = response.scores["complexity"].score
-        use_frontier = complexity >= self.settings.frontier_from
-        model = self.settings.frontier_model if use_frontier else self.settings.small_model
-        return self.agents[Intent(intent.choice)](msg, model)  # LLM only here
+        use_frontier = complexity >= cfg.frontier_from
+        model = cfg.frontier_model if use_frontier else cfg.small_model
+        logger.info(
+            "4. model | complexity=%.2f vs frontier_from %.2f -> %s",
+            complexity,
+            cfg.frontier_from,
+            model,
+        )
+
+        logger.info("5. agent | %s agent runs with model=%s (LLM only here)", intent.choice, model)
+        return self.agents[Intent(intent.choice)](msg, model)
