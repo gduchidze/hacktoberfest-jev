@@ -224,3 +224,5 @@ __marimo__/
 
 # JetBrains IDEs specific templates
 .idea
+.vercel
+.env*
